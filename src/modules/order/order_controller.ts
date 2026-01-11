@@ -71,9 +71,9 @@ class OrderController {
 
             const email = (await UserService.findById(res.locals.id))?.email;
             const link = await OrderServices.makePayment(order, email ?? 'gjamesgeorge98@gmail.com');
-            if (!link) throw new ServerIssueError('Error While creating order');
+            if (!link) throw new ServerIssueError('Error while creating order');
             const orderData = await OrderServices.create(order);
-            if (!orderData) throw new ServerIssueError('Error While creating order');
+            if (!orderData) throw new ServerIssueError('Error while creating order');
             const combinedData = { id: order.id, orderNo: order.order_no, link: link.data.link };
             return baseResponse({ res, message: link.message, data: combinedData });
         } catch (error: any) {

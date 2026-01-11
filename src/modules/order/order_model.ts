@@ -25,6 +25,7 @@ interface OrderDocument extends BaseDocument {
     total_price: number;
     points_used: number;
     points_earned: number;
+    slotTiming:object
     address: {
         id: Types.ObjectId;
         name: string;
@@ -53,6 +54,7 @@ interface OrderDocument extends BaseDocument {
     invoice_id: string;
     transaction_date: string;
     receipt_id: string;
+    
 }
 
 const OrderSchema = new Schema<OrderDocument>({
@@ -68,11 +70,28 @@ const OrderSchema = new Schema<OrderDocument>({
             price: { type: Number }
         }
     ],
-
     status: { type: String, enum: Object.values(OrderStatusEnum), default: OrderStatusEnum.pending },
     total_price: { type: Number },
     points_used: { type: Number },
     points_earned: { type: Number },
+    slotTiming:{
+            startTime:{
+            type: Date,
+            required: true,
+        },
+            endTime:{
+            type: Date,
+            required: true,
+        },
+        slotNumber:{
+            type: Number,
+            required: true,
+        },
+        date:{
+            type: Date,
+            required: true,
+        },
+    },
     address: {
         name: { type: String },
         phone: { type: String },

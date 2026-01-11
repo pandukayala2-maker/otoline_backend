@@ -65,6 +65,9 @@ class VendorController {
         
         // Handle category assignments if provided
         const categoryIds = req.body.category_ids;
+        const timeslots = req.body.timeslots;
+        const weekends = req.body.weekends;
+       
         if (categoryIds && Array.isArray(categoryIds)) {
             const { CategoryModel } = await import('../category/category_model');
             // Convert string IDs to ObjectIds for the vendor document
@@ -84,6 +87,12 @@ class VendorController {
                     { $set: { vendor_id: id } }
                 );
             }
+        }
+        if(timeslots.length > 0){
+            
+        }
+        if(weekends.length > 0){
+
         }
 
         // Handle service assignments if provided

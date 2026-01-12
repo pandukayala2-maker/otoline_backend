@@ -55,6 +55,7 @@ class ServiceServices {
         // return null;
     };
 
+     
     static delete = async (id: string) => await ServiceModel.findByIdAndDelete(id);
 }
 

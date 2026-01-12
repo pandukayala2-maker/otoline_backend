@@ -205,8 +205,24 @@ class AuthController {
             if (authDoc.usertype == UserTypeEnum.vendor) {
                 const vendorDoc: VendorDocument = req.body;
                 vendorDoc._id = generatedId;
+                
+                // Validate that at least one category is assigned to the vendor
+                const categoryIds = req.body.category_ids;
+                if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+                    throw new BadRequestError('At least one category must be assigned to the vendor');
+                }
+                
+                vendorDoc.category_ids = categoryIds;
                 vendorAuth = await VendorService.create(vendorDoc);
                 if (!vendorAuth && !masterAuth) throw new ServerIssueError('Error while creating Vendor');
+                
+                // Update categories with vendor_id
+                const { CategoryModel } = await import('../category/category_model');
+                const { Types } = await import('mongoose');
+                await CategoryModel.updateMany(
+                    { _id: { $in: categoryIds } },
+                    { $set: { vendor_id: generatedId } }
+                );
             }
 
             if (authDoc.usertype == UserTypeEnum.user) {

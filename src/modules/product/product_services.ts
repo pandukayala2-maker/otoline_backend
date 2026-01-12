@@ -74,6 +74,107 @@ class ProductServices {
         await ProductModel.findByIdAndUpdate(productId, { $inc: { stock: qty } }, { new: true });
 
     static delete = async (id: string): Promise<ProductDocument | null> => await ProductModel.findByIdAndDelete(id);
+
+    static getVendorAssignedCategories = async (vendorId: string) => {
+        const { VendorModel } = await import('../vendor/vendor_model');
+        const { CategoryModel } = await import('../category/category_model');
+        const { ServiceModel } = await import('../service/service_model');
+        
+        const categoryMap = new Map<string, any>();
+        
+        // 1. Get categories from vendor's category_ids array
+        const vendor = await VendorModel.findById(vendorId)
+            .populate({
+                path: 'category_ids',
+                select: '_id name other_name desc image type',
+                model: CategoryModel
+            });
+
+        if (vendor?.category_ids && vendor.category_ids.length > 0) {
+            (vendor.category_ids as any[]).forEach((category) => {
+                if (category && category._id) {
+                    categoryMap.set(category._id.toString(), {
+                        id: category._id,
+                        name: category.name,
+                        other_name: category.other_name,
+                        desc: category.desc,
+                        image: category.image,
+                        type: category.type
+                    });
+                }
+            });
+        }
+
+        // 2. Get categories from vendor's existing products
+        const products = await ProductModel.find({ 
+            vendor_id: vendorId, 
+            deleted_at: null 
+        }).select('category_id');
+
+        const productCategoryIds = new Set<string>();
+        products.forEach((product: any) => {
+            const cat = product.category_id;
+            if (!cat) return;
+            if (Array.isArray(cat)) {
+                cat.forEach((catId: any) => {
+                    const idStr = catId.toString();
+                    if (!categoryMap.has(idStr)) productCategoryIds.add(idStr);
+                });
+            } else {
+                const idStr = cat.toString();
+                if (!categoryMap.has(idStr)) productCategoryIds.add(idStr);
+            }
+        });
+
+        // 3. Get categories from vendor's existing services
+        const services = await ServiceModel.find({
+            vendor_id: vendorId,
+            deleted_at: null
+        }).select('category_id');
+
+        const serviceCategoryIds = new Set<string>();
+        services.forEach((service: any) => {
+            const cat = service.category_id;
+            if (!cat) return;
+            if (Array.isArray(cat)) {
+                cat.forEach((catId: any) => {
+                    const idStr = catId.toString();
+                    if (!categoryMap.has(idStr)) serviceCategoryIds.add(idStr);
+                });
+            } else {
+                const idStr = cat.toString();
+                if (!categoryMap.has(idStr)) serviceCategoryIds.add(idStr);
+            }
+        });
+
+        // 4. Fetch and add product + service categories
+        const combinedIds = new Set<string>([
+            ...Array.from(productCategoryIds),
+            ...Array.from(serviceCategoryIds),
+        ]);
+
+        if (combinedIds.size > 0) {
+            const missingCategories = await CategoryModel.find({
+                _id: { $in: Array.from(combinedIds) },
+                deleted_at: null
+            }).select('_id name other_name desc image type');
+
+            missingCategories.forEach((category: any) => {
+                categoryMap.set(category._id.toString(), {
+                    id: category._id,
+                    name: category.name,
+                    other_name: category.other_name,
+                    desc: category.desc,
+                    image: category.image,
+                    type: category.type
+                });
+            });
+        }
+
+        // Return all unique categories (admin-assigned + from products + services)
+        return Array.from(categoryMap.values());
+    };
 }
 
 export default ProductServices;
+

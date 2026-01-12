@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import MediaHandler from '../../middleware/media_handler';
 import { baseResponse } from '../../middleware/response_handler';
 
-import { NotFoundError, ServerIssueError, UnauthorizedError } from '../../common/base_error';
+import { NotFoundError, ServerIssueError, UnauthorizedError, BadRequestError } from '../../common/base_error';
 import { UserTypeEnum } from '../../constant/enum';
 import { AuthDocument, AuthModel } from '../auth/auth_model';
 import { VendorDocument } from './vendor_model';
@@ -69,6 +69,11 @@ class VendorController {
         const weekends = req.body.weekends;
        
         if (categoryIds && Array.isArray(categoryIds)) {
+            // Validate that at least one category is provided (for updates where categories are being assigned)
+            if (categoryIds.length === 0) {
+                throw new BadRequestError('At least one category must be assigned to the vendor');
+            }
+
             const { CategoryModel } = await import('../category/category_model');
             // Convert string IDs to ObjectIds for the vendor document
             userDoc.category_ids = categoryIds.map((id: string) => new Types.ObjectId(id));
@@ -128,6 +133,12 @@ class VendorController {
         const vendorId: string = req.params.id ?? req.query.vendor_id ?? req.body._id;
         const categoriesWithServices = await VendorService.getVendorAssignedCategoriesWithServices(vendorId);
         return baseResponse({ res: res, data: categoriesWithServices });
+    };
+
+    static getAssignedCategories = async (req: Request, res: Response, next: NextFunction) => {
+        const vendorId: string = req.params.id ?? req.query.vendor_id ?? req.body._id;
+        const categories = await VendorService.getVendorAssignedCategories(vendorId);
+        return baseResponse({ res: res, data: categories });
     };
 }
 

@@ -8,8 +8,8 @@ import GovernateValidations from './governates_validations';
 const router = Router();
 
 router.get('/', asyncHandler(GovernateController.find));
-router.post('/', JWTToken.adminAccessToken, GovernateValidations.create, asyncHandler(GovernateController.create));
-router.patch('/:id', validateId, JWTToken.adminAccessToken, asyncHandler(GovernateController.update));
-router.delete('/:id', validateId, JWTToken.adminAccessToken, asyncHandler(GovernateController.delete));
+router.post('/', JWTToken.vendorAccessToken, GovernateValidations.create, asyncHandler(GovernateController.create));
+router.patch('/:id', validateId, JWTToken.vendorAccessToken, asyncHandler(GovernateController.update));
+router.delete('/:id', validateId, JWTToken.vendorAccessToken, asyncHandler(GovernateController.delete));
 
 export default router;

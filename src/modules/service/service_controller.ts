@@ -42,6 +42,13 @@ class ServiceController {
         const data = await ServiceServices.update({ deleted_at: new Date() }, id);
         return data ? baseResponse({ res: res, message: 'Successfully Deleted' }) : next(new ServerIssueError('Error while deleting'));
     };
+
+    static getVendorCategories = async (req: Request, res: Response, next: NextFunction) => {
+        const vendorId: string = req.params.vendor_id ?? req.query.vendor_id ?? req.body.vendor_id;
+        const categories = await ServiceServices.getVendorAssignedCategories(vendorId);
+        return baseResponse({ res: res, data: categories });
+    };
 }
 
 export default ServiceController;
+

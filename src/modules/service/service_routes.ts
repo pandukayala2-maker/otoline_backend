@@ -9,6 +9,7 @@ import ServiceValidations from './service_validations';
 const router = Router();
 
 router.get('/', asyncHandler(ServiceController.find));
+router.get('/vendor/:vendor_id/categories', asyncHandler(ServiceController.getVendorCategories));
 router.get('/:id', asyncHandler(ServiceController.findById));
 router.post(
     '/',

@@ -9,6 +9,7 @@ import ProductValidations from './product_validation';
 const router = Router();
 
 router.get('/', JWTToken.emptyAccessToken, asyncHandler(ProductController.find));
+router.get('/vendor/:vendor_id/categories', asyncHandler(ProductController.getVendorCategories));
 router.get('/:id', validateId, asyncHandler(ProductController.findById));
 
 router.post(

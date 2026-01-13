@@ -32,6 +32,16 @@ app.use('/vendor', (req, res, next) => {
 	next();
 });
 
+// Serve category images
+app.use('/category', (req, res, next) => {
+	const safePath = path.normalize(req.path).replace(/^\\|\//, '');
+	const candidate = path.join(staticRoot, 'assets', 'category', safePath);
+	if (fs.existsSync(candidate)) {
+		return res.sendFile(candidate);
+	}
+	next();
+});
+
 app.use(apiRequestInfo);
 app.use(payloadHandler);
 

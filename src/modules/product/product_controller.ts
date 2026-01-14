@@ -35,6 +35,8 @@ class ProductController {
         if (req.query.name) query.name = RegExp(`^${req.query.name}`, 'i');
         if (res.locals.usertype === UserTypeEnum.vendor) query.vendor_id = res.locals.id;
         if (req.query.vendor_id) query.vendor_id = req.query.vendor_id;
+        // ✅ FIX: Always filter deleted products (soft delete)
+        query.deleted_at = null;
         const data: ProductDocument[] = await ProductServices.find(query, categorize, sortstock);
         return baseResponse({ res: res, data: categorize ? groupByCategory(data) : data });
     };

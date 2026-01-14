@@ -11,7 +11,7 @@ router.get('/', asyncHandler(VendorController.find));
 router.get('/:id/categories', validateId, asyncHandler(VendorController.getCategories));
 router.get('/:id/assigned-categories', validateId, JWTToken.validateAccessToken, asyncHandler(VendorController.getAssignedCategories));
 router.get('/:id/assigned-categories-with-services', validateId, JWTToken.validateAccessToken, asyncHandler(VendorController.getAssignedCategoriesWithServices));
-router.get('/:id', validateId, JWTToken.validateAccessToken, asyncHandler(VendorController.findById));
+router.get('/:id', validateId, JWTToken.emptyAccessToken, asyncHandler(VendorController.findById));
 router.patch('/:id', validateId, JWTToken.vendorAccessToken, MediaHandler.singleMediaHandler, asyncHandler(VendorController.update));
 
 export default router;

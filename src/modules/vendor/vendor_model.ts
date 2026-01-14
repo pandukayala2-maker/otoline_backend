@@ -16,6 +16,7 @@ interface VendorDocument extends BaseDocument {
     iban_number?: string;
     commission?: number;
     category_ids?: Types.ObjectId[];
+    governate_ids?: string[]; // Governate IDs that vendor serves
     address: {
         name: string;
         phone: string;
@@ -31,7 +32,7 @@ interface VendorDocument extends BaseDocument {
         isActive: boolean;
         number_of_services: number;
     }>;
-    weekends?: string[]; // Day names: Sunday, Monday, etc.
+    weekends?: number[]; // Day indexes: 0=Sunday, 1=Monday, ... 6=Saturday
 }
 
 const VendorSchema = new Schema<VendorDocument>({
@@ -47,6 +48,7 @@ const VendorSchema = new Schema<VendorDocument>({
     iban_number: { type: String },
     commission: { type: Number, default: 0 },
     category_ids: { type: [Schema.Types.ObjectId], ref: 'categories', default: [] },
+    governate_ids: { type: [String], default: [] }, // Governate IDs that vendor serves
     address: {
         name: { type: String },
         phone: { type: String },
@@ -76,7 +78,7 @@ const VendorSchema = new Schema<VendorDocument>({
             },
         },
     ],
-    weekends: [{ type: String }] // Day names: Sunday, Monday, etc.
+    weekends: [{ type: Number }] // Day indexes: 0=Sunday, 1=Monday, ... 6=Saturday
 });
 
 VendorSchema.add(baseSchema);

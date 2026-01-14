@@ -37,6 +37,9 @@ class VendorService {
                 iban_number: 1,
                 commission: 1,
                 category_ids: 1,
+                governate_ids: 1,
+                timeslots: 1,
+                weekends: 1,
                 created_at: 1,
                 owner_name: 1
             }
@@ -44,7 +47,13 @@ class VendorService {
 
         pipeline.push({ $sort: { created_at: -1 } });
 
-        return await VendorModel.aggregate(pipeline);
+        const result = await VendorModel.aggregate(pipeline);
+        console.log('📊 VendorService.find - Query:', query);
+        console.log('📊 VendorService.find - Results count:', result.length);
+        if (result.length > 0) {
+            console.log('📊 VendorService.find - First vendor:', JSON.stringify(result[0], null, 2));
+        }
+        return result;
     };
 
     static findOne = async (filter: any) => await VendorModel.findOne(filter);
@@ -77,6 +86,7 @@ class VendorService {
                 iban_number: 1,
                 commission: 1,
                 category_ids: 1,
+                governate_ids: 1,
                 created_at: 1,
                 owner_name: 1,
                 timeslots: 1,

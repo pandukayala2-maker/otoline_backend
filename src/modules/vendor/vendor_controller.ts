@@ -116,9 +116,42 @@ class VendorController {
         
         // Handle timeslots if provided
         if (timeslots && Array.isArray(timeslots)) {
+            const parseTimeString = (timeStr: string | Date): Date => {
+                // If already a Date object, return as-is
+                if (timeStr instanceof Date) return timeStr;
+                
+                const str = String(timeStr).trim();
+                
+                // If it's a full ISO 8601 date string, parse it directly
+                if (str.includes('T') || str.match(/^\d{4}-\d{2}-\d{2}/)) {
+                    try {
+                        return new Date(str);
+                    } catch (e) {
+                        // Fall through to time-only parsing
+                    }
+                }
+                
+                // Handle time-only format (HH:mm or HH:mm:ss)
+                const timeParts = str.split(':');
+                if (timeParts.length >= 2) {
+                    try {
+                        const hour = parseInt(timeParts[0], 10);
+                        const minute = parseInt(timeParts[1], 10);
+                        const second = timeParts.length > 2 ? parseInt(timeParts[2], 10) : 0;
+                        
+                        const now = new Date();
+                        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, second);
+                    } catch (e) {
+                        return new Date();
+                    }
+                }
+                
+                return new Date();
+            };
+
             userDoc.timeslots = timeslots.map((slot: any) => ({
-                startTime: new Date(slot.startTime),
-                endTime: new Date(slot.endTime),
+                startTime: parseTimeString(slot.startTime),
+                endTime: parseTimeString(slot.endTime),
                 isActive: Boolean(slot.isActive),
                 number_of_services: Number(slot.number_of_services) || 1,
             }));
@@ -127,16 +160,8 @@ class VendorController {
         
         // Handle weekends if provided
         if (weekends && Array.isArray(weekends)) {
-            // Accept either string day names or convert numbers to day names
-            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            userDoc.weekends = weekends.map((day: any) => {
-                if (typeof day === 'string') {
-                    return day; // Already a day name
-                } else if (typeof day === 'number') {
-                    return dayNames[day] || ''; // Convert number to day name
-                }
-                return '';
-            }).filter((d: string) => d !== '');
+            // Accept weekends as numbers (0=Sunday, 1=Monday, ... 6=Saturday)
+            userDoc.weekends = weekends.map((day: any) => Number(day)).filter((d: number) => !isNaN(d) && d >= 0 && d <= 6);
             console.log('📆 Updating vendor with weekends:', userDoc.weekends);
         }
 

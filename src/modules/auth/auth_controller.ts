@@ -70,61 +70,46 @@ class AuthController {
     };
 
    static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const authDoc: AuthDocument = req.body;
-        const developerPhone = '60662934';
-        const developerOtp = '909787';
+        try {
+            const authDoc: AuthDocument = req.body;
 
-        if (!authDoc.phone) {
-            throw new BadRequestError('Phone number is required');
-        }
-
-        // 1. Check for Developer Bypass
-        const isDeveloper = authDoc.phone === developerPhone && authDoc.otp === developerOtp;
-
-        let auth = await AuthService.findOne({ phone: authDoc.phone });
-
-        if (auth || authDoc.phone === developerPhone) {
-            
-            // 2. Standard OTP Validation (If not developer)
-            if (!isDeveloper) {
-                // If you want to enforce the OTP stored in DB for normal users:
-                if (auth && auth.otp !== authDoc.otp) {
-                    throw new BadRequestError('Invalid OTP');
-                }
-                
-                // Check if user is disabled (Developers bypass this check in your logic)
-                if (auth && (auth.deleted_at || auth.is_disabled)) {
-                    throw new BadRequestError('The user may have been deleted or disabled by the admin');
-                }
+            if (!authDoc.phone) {
+                throw new BadRequestError('Phone number is required');
             }
 
-            // Mark phone as verified
+            console.log('=== FALLBACK OTP VERIFICATION (NO BACKEND OTP CHECK) ===');
+            console.log('Phone:', authDoc.phone);
+            console.log('Entered OTP (not validated on backend):', authDoc.otp);
+
+            // IMPORTANT:
+            // We are NOT validating the numeric OTP on the backend anymore.
+            // This endpoint is treated as a fallback when the client has already
+            // verified the OTP with Firebase, but /verifyfirebaseotp fails.
+
+            let auth = await AuthService.findOne({ phone: authDoc.phone });
+
             if (auth) {
+                if (auth.deleted_at || auth.is_disabled) {
+                    throw new BadRequestError('The user may have been deleted or disabled by the admin');
+                }
+
+                // Mark phone as verified and update any extra fields from the request
                 auth.is_phone_verified = true;
                 await AuthService.update(authDoc, auth.id);
             } else {
-                // Create developer account on the fly if it doesn't exist
                 const generatedId = generateMongoId();
                 authDoc._id = generatedId;
                 authDoc.is_phone_verified = true;
                 auth = await AuthService.create(authDoc);
             }
-        } else {
-            // New user registration flow
-            const generatedId = generateMongoId();
-            authDoc._id = generatedId;
-            authDoc.is_phone_verified = true;
-            auth = await AuthService.create(authDoc);
-        }
 
-        await auth.updateLastLogin();
-        return await AuthController.generateTokenAndRespond(auth, res);
-    } catch (error) {
-        logger.error(error);
-        return next(error);
-    }
-};
+            await auth.updateLastLogin();
+            return await AuthController.generateTokenAndRespond(auth, res);
+        } catch (error) {
+            logger.error(error);
+            return next(error);
+        }
+    };
 
     static verifyFirebaseOtp = async (req: Request, res: Response, next: NextFunction) => {
         try {

@@ -135,7 +135,8 @@ class BookingController {
         const vendor = await VendorService.findById(vendor_id);
         if (!vendor) return next(new BadRequestError('Vendor not found'));
 
-        const isAvailable = bookings.length < vendor.booking_per_day;
+        const maxBookingsPerDay = vendor.booking_per_day || 1;
+        const isAvailable = bookings.length < maxBookingsPerDay;
 
         return isAvailable ? baseResponse({ res: res }) : next(new ServerIssueError('Date Not Available'));
     };

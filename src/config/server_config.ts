@@ -48,8 +48,8 @@ class ServerAppConfig {
     private static httpServer(app: Express) {
         const httpServer = http.createServer(app);
         new WebSocketConfig(httpServer);
-        httpServer.listen(port, () => {
-            console.log(`Local server started at port : ${port}`);
+        httpServer.listen(Number(port), '0.0.0.0', () => {
+            console.log(`Local server started at port : ${port} on all network interfaces (0.0.0.0)`);
         });
     }
 }

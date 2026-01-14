@@ -76,6 +76,9 @@ class AuthController {
             if (!authDoc.phone) {
                 throw new BadRequestError('Phone number is required');
             }
+                      if (!authDoc.otp) {
+            throw new BadRequestError('OTP is required');
+        }
 
             console.log('=== FALLBACK OTP VERIFICATION (NO BACKEND OTP CHECK) ===');
             console.log('Phone:', authDoc.phone);
@@ -88,6 +91,26 @@ class AuthController {
 
             let auth = await AuthService.findOne({ phone: authDoc.phone });
 
+            if (!auth) {
+            throw new BadRequestError('No OTP request found for this phone number. Please request OTP first.');
+        }
+
+        console.log('Stored OTP:', auth.otp);
+        console.log('OTP Created At:', auth.otp_created_at);
+
+        // Validate OTP - convert to strings and trim
+        const storedOtp = String(auth.otp || '').trim();
+        const submittedOtp = String(authDoc.otp || '').trim();
+
+        console.log('Comparing:');
+        console.log('  Stored:', storedOtp);
+        console.log('  Submitted:', submittedOtp);
+        console.log('  Match:', storedOtp === submittedOtp);
+
+        if (storedOtp !== submittedOtp) {
+            throw new BadRequestError('Invalid OTP');
+        }
+
             if (auth) {
                 if (auth.deleted_at || auth.is_disabled) {
                     throw new BadRequestError('The user may have been deleted or disabled by the admin');
@@ -95,7 +118,9 @@ class AuthController {
 
                 // Mark phone as verified and update any extra fields from the request
                 auth.is_phone_verified = true;
-                await AuthService.update(authDoc, auth.id);
+                auth.otp = undefined;
+                  auth.otp_created_at = undefined;
+                await AuthService.update(auth, auth.id);
             } else {
                 const generatedId = generateMongoId();
                 authDoc._id = generatedId;

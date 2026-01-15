@@ -13,11 +13,7 @@ export default class AuthValidations extends BaseValidator {
             .notEmpty()
             .withMessage('OTP is required.')
             .isString()
-            .withMessage('OTP must be a string.')
-            .isLength({ min: 6, max: 6 })
-            .withMessage('OTP must be exactly 6 characters.')
-            .matches(/^\d+$/)
-            .withMessage('OTP must contain only digits.'),
+            .withMessage('OTP must be a string.'),
         ErrorHandler.requestValidator
     ];
 

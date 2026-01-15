@@ -76,57 +76,57 @@ class AuthController {
             if (!authDoc.phone) {
                 throw new BadRequestError('Phone number is required');
             }
-                      if (!authDoc.otp) {
-            throw new BadRequestError('OTP is required');
-        }
+            if (!authDoc.otp) {
+                throw new BadRequestError('OTP is required');
+            }
 
-            console.log('=== FALLBACK OTP VERIFICATION (NO BACKEND OTP CHECK) ===');
+            console.log('=== OTP VERIFICATION ===');
             console.log('Phone:', authDoc.phone);
-            console.log('Entered OTP (not validated on backend):', authDoc.otp);
+            console.log('Entered OTP:', authDoc.otp);
 
-            // IMPORTANT:
-            // We are NOT validating the numeric OTP on the backend anymore.
-            // This endpoint is treated as a fallback when the client has already
-            // verified the OTP with Firebase, but /verifyfirebaseotp fails.
-
+            // Find existing auth record
             let auth = await AuthService.findOne({ phone: authDoc.phone });
 
             if (!auth) {
-            throw new BadRequestError('No OTP request found for this phone number. Please request OTP first.');
-        }
-
-        console.log('Stored OTP:', auth.otp);
-        console.log('OTP Created At:', auth.otp_created_at);
-
-        // Validate OTP - convert to strings and trim
-        const storedOtp = String(auth.otp || '').trim();
-        const submittedOtp = String(authDoc.otp || '').trim();
-
-        console.log('Comparing:');
-        console.log('  Stored:', storedOtp);
-        console.log('  Submitted:', submittedOtp);
-        console.log('  Match:', storedOtp === submittedOtp);
-
-        if (storedOtp !== submittedOtp) {
-            throw new BadRequestError('Invalid OTP');
-        }
-
-            if (auth) {
-                if (auth.deleted_at || auth.is_disabled) {
-                    throw new BadRequestError('The user may have been deleted or disabled by the admin');
-                }
-
-                // Mark phone as verified and update any extra fields from the request
-                auth.is_phone_verified = true;
-                auth.otp = undefined;
-                  auth.otp_created_at = undefined;
-                await AuthService.update(auth, auth.id);
-            } else {
-                const generatedId = generateMongoId();
-                authDoc._id = generatedId;
-                authDoc.is_phone_verified = true;
-                auth = await AuthService.create(authDoc);
+                throw new BadRequestError('No OTP request found for this phone number. Please request OTP first.');
             }
+
+            // Validate the OTP matches
+            const storedOtp = String(auth.otp || '').trim();
+            const submittedOtp = String(authDoc.otp || '').trim();
+
+            console.log('Comparing OTPs:');
+            console.log('  Stored:', storedOtp);
+            console.log('  Submitted:', submittedOtp);
+            console.log('  Match:', storedOtp === submittedOtp);
+
+            if (storedOtp !== submittedOtp) {
+                throw new BadRequestError('Invalid OTP');
+            }
+
+            // Check if OTP has expired (5 minutes)
+            if (auth.otp_created_at) {
+                const now = new Date();
+                const otpAge = now.getTime() - auth.otp_created_at.getTime();
+                const fiveMinutesMs = 5 * 60 * 1000;
+
+                if (otpAge > fiveMinutesMs) {
+                    throw new BadRequestError('OTP has expired. Please request a new one.');
+                }
+            }
+
+            // Check user status
+            if (auth.deleted_at || auth.is_disabled) {
+                throw new BadRequestError('The user may have been deleted or disabled by the admin');
+            }
+
+            console.log('✅ OTP validation successful');
+            // Mark phone as verified and clear OTP
+            auth.is_phone_verified = true;
+            auth.otp = undefined;
+            auth.otp_created_at = undefined;
+            await AuthService.update(auth, auth.id);
+            console.log('✅ Updated auth record - marked phone as verified');
 
             await auth.updateLastLogin();
             return await AuthController.generateTokenAndRespond(auth, res);

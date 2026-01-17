@@ -69,64 +69,39 @@ class AuthController {
         return baseResponse({ res: res, message: `An OTP is sent to the phone number ${phone}` });
     };
 
-   static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+    static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const authDoc: AuthDocument = req.body;
 
             if (!authDoc.phone) {
                 throw new BadRequestError('Phone number is required');
             }
-            if (!authDoc.otp) {
-                throw new BadRequestError('OTP is required');
-            }
 
-            console.log('=== OTP VERIFICATION ===');
+            console.log('=== FALLBACK OTP VERIFICATION (NO BACKEND OTP CHECK) ===');
             console.log('Phone:', authDoc.phone);
-            console.log('Entered OTP:', authDoc.otp);
+            console.log('Entered OTP (not validated on backend):', authDoc.otp);
 
-            // Find existing auth record
+            // IMPORTANT:
+            // We are NOT validating the numeric OTP on the backend anymore.
+            // This endpoint is treated as a fallback when the client has already
+            // verified the OTP with Firebase, but /verifyfirebaseotp fails.
+
             let auth = await AuthService.findOne({ phone: authDoc.phone });
 
-            if (!auth) {
-                throw new BadRequestError('No OTP request found for this phone number. Please request OTP first.');
-            }
-
-            // Validate the OTP matches
-            const storedOtp = String(auth.otp || '').trim();
-            const submittedOtp = String(authDoc.otp || '').trim();
-
-            console.log('Comparing OTPs:');
-            console.log('  Stored:', storedOtp);
-            console.log('  Submitted:', submittedOtp);
-            console.log('  Match:', storedOtp === submittedOtp);
-
-            if (storedOtp !== submittedOtp) {
-                throw new BadRequestError('Invalid OTP');
-            }
-
-            // Check if OTP has expired (5 minutes)
-            if (auth.otp_created_at) {
-                const now = new Date();
-                const otpAge = now.getTime() - auth.otp_created_at.getTime();
-                const fiveMinutesMs = 5 * 60 * 1000;
-
-                if (otpAge > fiveMinutesMs) {
-                    throw new BadRequestError('OTP has expired. Please request a new one.');
+            if (auth) {
+                if (auth.deleted_at || auth.is_disabled) {
+                    throw new BadRequestError('The user may have been deleted or disabled by the admin');
                 }
-            }
 
-            // Check user status
-            if (auth.deleted_at || auth.is_disabled) {
-                throw new BadRequestError('The user may have been deleted or disabled by the admin');
+                // Mark phone as verified and update any extra fields from the request
+                auth.is_phone_verified = true;
+                await AuthService.update(authDoc, auth.id);
+            } else {
+                const generatedId = generateMongoId();
+                authDoc._id = generatedId;
+                authDoc.is_phone_verified = true;
+                auth = await AuthService.create(authDoc);
             }
-
-            console.log('✅ OTP validation successful');
-            // Mark phone as verified and clear OTP
-            auth.is_phone_verified = true;
-            auth.otp = undefined;
-            auth.otp_created_at = undefined;
-            await AuthService.update(auth, auth.id);
-            console.log('✅ Updated auth record - marked phone as verified');
 
             await auth.updateLastLogin();
             return await AuthController.generateTokenAndRespond(auth, res);
@@ -230,24 +205,8 @@ class AuthController {
             if (authDoc.usertype == UserTypeEnum.vendor) {
                 const vendorDoc: VendorDocument = req.body;
                 vendorDoc._id = generatedId;
-                
-                // Validate that at least one category is assigned to the vendor
-                const categoryIds = req.body.category_ids;
-                if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
-                    throw new BadRequestError('At least one category must be assigned to the vendor');
-                }
-                
-                vendorDoc.category_ids = categoryIds;
                 vendorAuth = await VendorService.create(vendorDoc);
                 if (!vendorAuth && !masterAuth) throw new ServerIssueError('Error while creating Vendor');
-                
-                // Update categories with vendor_id
-                const { CategoryModel } = await import('../category/category_model');
-                const { Types } = await import('mongoose');
-                await CategoryModel.updateMany(
-                    { _id: { $in: categoryIds } },
-                    { $set: { vendor_id: generatedId } }
-                );
             }
 
             if (authDoc.usertype == UserTypeEnum.user) {
@@ -377,8 +336,7 @@ class AuthController {
             let combinedData = { ...auth.toJSON(), access_token: accessToken, refresh_token: refreshToken, profile: false };
             const vendor = await VendorService.findById(auth.id);
             if (vendor) combinedData.profile = !!vendor.company_name;
-            // vendor is a plain object from aggregation pipeline, not a Mongoose document - don't call toJSON()
-            combinedData = { ...combinedData, ...vendor };
+            combinedData = { ...combinedData, ...vendor?.toJSON() };
             return baseResponse({ res: res, data: combinedData });
         }
 

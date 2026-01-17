@@ -29,6 +29,12 @@ class AddressController {
         const data = await AddressServices.delete(id);
         return data ? baseResponse({ res: res, message: 'Successfully Deleted' }) : next(new ServerIssueError('Error while deleting'));
     };
+
+    static setDefault = async (req: Request, res: Response, next: NextFunction) => {
+        const id: string = req.params.id;
+        const data = await AddressServices.setDefault(id, res.locals.id);
+        return data ? baseResponse({ res: res, data: data }) : next(new ServerIssueError('Error while setting default'));
+    };
 }
 
 export default AddressController;

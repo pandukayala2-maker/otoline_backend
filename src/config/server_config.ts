@@ -16,12 +16,14 @@ class ServerAppConfig {
             const mongoConnection = MongoConnection.getInstance();
             await mongoConnection.connect();
 
-            if (Config._APP_ENV === EnvEnum.production || Config._APP_ENV === EnvEnum.staging) {
+            // Use development HTTP for local development, HTTPS for production
+            const env = Config._APP_ENV?.toLowerCase().trim();
+            
+            if (env === 'production' || env === 'staging') {
                 this.httpsServer(app);
-            } else if (Config._APP_ENV === EnvEnum.development) {
-                this.httpServer(app);
             } else {
-                throw new Error('Invalid Environment');
+                // Default to HTTP for development
+                this.httpServer(app);
             }
         } catch (error) {
             console.error('Application failed to start:', error);

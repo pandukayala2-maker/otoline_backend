@@ -14,6 +14,13 @@ class AddressServices {
     };
 
     static delete = async (id: string) => await AddressModel.findByIdAndDelete(id);
+
+    static setDefault = async (id: string, userId: string) => {
+        // Unset all defaults for the user
+        await AddressModel.updateMany({ user_id: userId }, { is_default: false });
+        // Set the new default
+        return await AddressModel.findByIdAndUpdate(id, { is_default: true }, { new: true });
+    };
 }
 
 export default AddressServices;

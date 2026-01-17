@@ -22,6 +22,7 @@ interface AddressDocument extends BaseDocument {
     type: AddressType;
     user_id: Types.ObjectId;
     governate_id?: Types.ObjectId | GovernateDocument;
+    is_default?: boolean;
 }
 
 const AddressSchema = new Schema<AddressDocument>({
@@ -37,7 +38,8 @@ const AddressSchema = new Schema<AddressDocument>({
 
     type: { type: String, enum: Object.values(AddressType), default: AddressType.home },
     user_id: { type: Schema.Types.ObjectId, ref: 'users', required: true },
-    governate_id: { type: Schema.Types.ObjectId, ref: 'governates' }
+    governate_id: { type: Schema.Types.ObjectId, ref: 'governates' },
+    is_default: { type: Boolean, default: false }
 });
 
 AddressSchema.add(baseSchema);

@@ -66,7 +66,7 @@ class AuthController {
         }
 
         console.log(`OTP process completed for phone ${phone}. SMS sent via free SMS service.`);
-        return baseResponse({ res: res, message: `An OTP is sent to the phone number ${phone}` });
+        return baseResponse({ res: res, message: `An OTP is sent to the Phone Number ${phone}` });
     };
 
     static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {

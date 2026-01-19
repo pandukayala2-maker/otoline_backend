@@ -81,50 +81,39 @@ const response = await fetch('https://www.kwtsms.com/API/send/', {
     static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const authDoc: AuthDocument = req.body;
-            const developerPhone = '60662934';
-            const developerOtp = '111111';
+           
 
             if (!authDoc.phone) {
                 throw new BadRequestError('Phone number is required');
             }
 
-            // 1. Check for Developer Bypass
-            const isDeveloper = authDoc.phone === developerPhone && authDoc.otp === developerOtp;
+          
 
             let auth = await AuthService.findOne({ phone: authDoc.phone });
 
-            if (auth || authDoc.phone === developerPhone) {
-
-                // 2. Standard OTP Validation (If not developer)
-                if (!isDeveloper) {
+            if (auth) {
+ if (auth.deleted_at || auth.is_disabled) {
+                        throw new BadRequestError('The user may have been deleted or disabled by the admin');
+                    }
                     // If you want to enforce the OTP stored in DB for normal users:
-                    if (auth && auth.otp != authDoc.otp) {
-                        throw new BadRequestError('Invalid OTP');
+                    if (auth.otp == authDoc.otp) {
+                            
+                    auth.is_phone_verified = true;
+                    await AuthService.update(authDoc, auth.id);
+                        await auth.updateLastLogin();
+            return await AuthController.generateTokenAndRespond(auth, res);
+                    }else{
+                         throw new BadRequestError('Invalid OTP');
                     }
 
                     // Check if user is disabled (Developers bypass this check in your logic)
-                    if (auth && (auth.deleted_at || auth.is_disabled)) {
-                        throw new BadRequestError('The user may have been deleted or disabled by the admin');
-                    }
-                }
+                   
+
 
                 // Mark phone as verified
-                if (auth) {
-                    auth.is_phone_verified = true;
-                    await AuthService.update(authDoc, auth.id);
-                } else {
-                    // Create developer account on the fly if it doesn't exist
-                    const generatedId = generateMongoId();
-                    authDoc._id = generatedId;
-                    authDoc.is_phone_verified = true;
-                    auth = await AuthService.create(authDoc);
-                }
-            } else {
-                // New user registration flow
-                const generatedId = generateMongoId();
-                authDoc._id = generatedId;
-                authDoc.is_phone_verified = true;
-                auth = await AuthService.create(authDoc);
+
+            } else{
+                 throw new BadRequestError('Invalid User');
             }
 
             await auth.updateLastLogin();

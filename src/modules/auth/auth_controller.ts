@@ -52,7 +52,7 @@ const response = await fetch('https://www.kwtsms.com/API/send/', {
                 })
             });
 
-
+             console.log(response);
             console.log(`✅ SMS sent successfully to ${phone} with OTP ${otp}`);
 
         } catch (error) {

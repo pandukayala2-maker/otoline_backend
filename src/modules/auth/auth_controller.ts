@@ -21,12 +21,14 @@ class AuthController {
 
     static phoneSignIn = async (req: Request, res: Response, next: NextFunction) => {
         const authDoc: AuthDocument = req.body;
-        const phone = authDoc.phone;
+        const p = authDoc.phone;
+                const phone = p?.split('-').join('');
         if (!phone) throw new BadRequestError('Invalid Phone Number');
 
         const auth = await AuthService.findOne({ phone });
         const otp = generateOTP();
         authDoc.otp = otp;
+        authDoc.phone = phone;
         authDoc.otp_created_at = new Date();
 
         console.log('=== OTP GENERATION DEBUG ===');

@@ -45,7 +45,7 @@ const response = await fetch('https://www.kwtsms.com/API/send/', {
                 body: JSON.stringify({
                     username: "ootoline",
                     password: "Kwtsms@1234",
-                    "test": 1,
+                    test: 0,
                     sender: "KWT-SMS",
                     mobile: Number(phone),
                     message: `Your ootoline OTP is ${otp}`

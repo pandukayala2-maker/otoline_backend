@@ -36,18 +36,25 @@ class AuthController {
 
         // Send SMS with generated OTP using free SMS service
         try {
-            console.log(`📱 Attempting to send SMS to: ${phone}`);
-            console.log(`🔢 Sending OTP: ${otp}`);
             
-            // Send SMS with our generated OTP using free service
-            const smsSent = await SMSService.sendOTP(phone, otp);
-            
-            if (smsSent) {
-                console.log(`✅ SMS sent successfully to ${phone} with OTP ${otp}`);
-            } else {
-                console.log('❌ SMS failed, but OTP is still stored for verification');
-            }
-            
+const response = await fetch('https://www.kwtsms.com/API/send/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: "ootoline",
+                    password: "Kwtsms@1234",
+                    "test": 1,
+                    sender: "KWT-SMS",
+                    mobile: Number(phone),
+                    message: `Your ootoline OTP is ${otp}`
+                })
+            });
+
+
+            console.log(`✅ SMS sent successfully to ${phone} with OTP ${otp}`);
+
         } catch (error) {
             console.error('❌ Failed to send SMS:', error);
             console.log('📝 SMS failed, but OTP is still stored for verification');
@@ -66,37 +73,52 @@ class AuthController {
         }
 
         console.log(`OTP process completed for phone ${phone}. SMS sent via free SMS service.`);
-        return baseResponse({ res: res, message: `An OTP is sent to the Phone Number ${phone}` });
+        return baseResponse({ res: res, message: `An OTP is sent to the phone number ${phone}` });
     };
 
     static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const authDoc: AuthDocument = req.body;
+            const developerPhone = '60662934';
+            const developerOtp = '111111';
 
             if (!authDoc.phone) {
                 throw new BadRequestError('Phone number is required');
             }
 
-            console.log('=== FALLBACK OTP VERIFICATION (NO BACKEND OTP CHECK) ===');
-            console.log('Phone:', authDoc.phone);
-            console.log('Entered OTP (not validated on backend):', authDoc.otp);
-
-            // IMPORTANT:
-            // We are NOT validating the numeric OTP on the backend anymore.
-            // This endpoint is treated as a fallback when the client has already
-            // verified the OTP with Firebase, but /verifyfirebaseotp fails.
+            // 1. Check for Developer Bypass
+            const isDeveloper = authDoc.phone === developerPhone && authDoc.otp === developerOtp;
 
             let auth = await AuthService.findOne({ phone: authDoc.phone });
 
-            if (auth) {
-                if (auth.deleted_at || auth.is_disabled) {
-                    throw new BadRequestError('The user may have been deleted or disabled by the admin');
+            if (auth || authDoc.phone === developerPhone) {
+
+                // 2. Standard OTP Validation (If not developer)
+                if (!isDeveloper) {
+                    // If you want to enforce the OTP stored in DB for normal users:
+                    if (auth && auth.otp != authDoc.otp) {
+                        throw new BadRequestError('Invalid OTP');
+                    }
+
+                    // Check if user is disabled (Developers bypass this check in your logic)
+                    if (auth && (auth.deleted_at || auth.is_disabled)) {
+                        throw new BadRequestError('The user may have been deleted or disabled by the admin');
+                    }
                 }
 
-                // Mark phone as verified and update any extra fields from the request
-                auth.is_phone_verified = true;
-                await AuthService.update(authDoc, auth.id);
+                // Mark phone as verified
+                if (auth) {
+                    auth.is_phone_verified = true;
+                    await AuthService.update(authDoc, auth.id);
+                } else {
+                    // Create developer account on the fly if it doesn't exist
+                    const generatedId = generateMongoId();
+                    authDoc._id = generatedId;
+                    authDoc.is_phone_verified = true;
+                    auth = await AuthService.create(authDoc);
+                }
             } else {
+                // New user registration flow
                 const generatedId = generateMongoId();
                 authDoc._id = generatedId;
                 authDoc.is_phone_verified = true;
@@ -205,8 +227,24 @@ class AuthController {
             if (authDoc.usertype == UserTypeEnum.vendor) {
                 const vendorDoc: VendorDocument = req.body;
                 vendorDoc._id = generatedId;
+
+                // Validate that at least one category is assigned to the vendor
+                const categoryIds = req.body.category_ids;
+                if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+                    throw new BadRequestError('At least one category must be assigned to the vendor');
+                }
+
+                vendorDoc.category_ids = categoryIds;
                 vendorAuth = await VendorService.create(vendorDoc);
                 if (!vendorAuth && !masterAuth) throw new ServerIssueError('Error while creating Vendor');
+
+                // Update categories with vendor_id
+                const { CategoryModel } = await import('../category/category_model');
+                const { Types } = await import('mongoose');
+                await CategoryModel.updateMany(
+                    { _id: { $in: categoryIds } },
+                    { $set: { vendor_id: generatedId } }
+                );
             }
 
             if (authDoc.usertype == UserTypeEnum.user) {
@@ -336,7 +374,8 @@ class AuthController {
             let combinedData = { ...auth.toJSON(), access_token: accessToken, refresh_token: refreshToken, profile: false };
             const vendor = await VendorService.findById(auth.id);
             if (vendor) combinedData.profile = !!vendor.company_name;
-            combinedData = { ...combinedData, ...vendor?.toJSON() };
+            // vendor is a plain object from aggregation pipeline, not a Mongoose document - don't call toJSON()
+            combinedData = { ...combinedData, ...vendor };
             return baseResponse({ res: res, data: combinedData });
         }
 

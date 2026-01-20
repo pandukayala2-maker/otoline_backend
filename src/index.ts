@@ -55,6 +55,10 @@ app.use('/category', (req, res, next) => {
 		return res.sendFile(candidate);
 	}
 	console.log(`❌ [IMAGE] Category image not found: ${candidate}`);
+	// Return 404 for missing images instead of passing to next route
+	if (req.path.includes('/image/')) {
+		return res.status(404).send('Image not found');
+	}
 	next();
 });
 
@@ -70,12 +74,17 @@ app.use('/banner', (req, res, next) => {
 		return res.sendFile(candidate);
 	}
 	console.log(`❌ [IMAGE] Banner image not found: ${candidate}`);
+	// Return 404 for missing images instead of passing to next route
+	if (req.path.includes('/image/')) {
+		return res.status(404).send('Image not found');
+	}
 	next();
 });
 
-// Car images
-app.use('/car/image', (req, res, next) => {
+// Car images - handle /car/image/:filename
+app.use('/car/image', (req, res) => {
 	const safePath = path.normalize(req.path).replace(/^\\|\//, '');
+	// Since route is /car/image, req.path starts with /, so safePath is just the filename
 	const candidate = path.join(staticRoot, 'public', 'car', 'image', safePath);
 	console.log(`[IMAGE] Car image requested: ${req.path}`);
 	console.log(`[IMAGE] Looking for: ${candidate}`);

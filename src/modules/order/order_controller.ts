@@ -29,7 +29,24 @@ class OrderController {
             order.status = OrderStatusEnum.pending;
             const address = await AddressServices.findById(address_id);
             if (!address) throw new BadRequestError('address is missing');
-            const governatesValue = (address.governate_id as GovernateDocument).value;
+            
+            // Debug: Log address structure
+            console.log('[ORDER DEBUG] Address governate_id:', address.governate_id);
+            console.log('[ORDER DEBUG] Address governate_id type:', typeof address.governate_id);
+            
+            // Safely get governate value with fallback to 0
+            let governatesValue = 0;
+            try {
+                if (address.governate_id) {
+                    const governate = address.governate_id as any;
+                    console.log('[ORDER DEBUG] Governate object:', governate);
+                    governatesValue = (typeof governate === 'object' && governate.value) ? governate.value : 0;
+                }
+            } catch (err) {
+                // If anything goes wrong getting governate, default to 0
+                console.log('[ORDER DEBUG] Error getting governate:', err);
+                governatesValue = 0;
+            }
 
             order.address = {
                 id: address_id,

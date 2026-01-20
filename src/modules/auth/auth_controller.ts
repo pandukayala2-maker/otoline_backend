@@ -78,51 +78,50 @@ const response = await fetch('https://www.kwtsms.com/API/send/', {
         return baseResponse({ res: res, message: `An OTP is sent to the phone number ${phone}` });
     };
 
-    static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const authDoc: AuthDocument = req.body;
-           
+  static verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const authDoc: AuthDocument = req.body;
 
-            if (!authDoc.phone) {
-                throw new BadRequestError('Phone number is required');
-            }
-
-          
-
-            let auth = await AuthService.findOne({ phone: authDoc.phone });
-
-            if (auth) {
- if (auth.deleted_at || auth.is_disabled) {
-                        throw new BadRequestError('The user may have been deleted or disabled by the admin');
-                    }
-                    // If you want to enforce the OTP stored in DB for normal users:
-                    if (auth.otp == authDoc.otp) {
-                            
-                    auth.is_phone_verified = true;
-                    await AuthService.update(authDoc, auth.id);
-                        await auth.updateLastLogin();
-            return await AuthController.generateTokenAndRespond(auth, res);
-                    }else{
-                         throw new BadRequestError('Invalid OTP');
-                    }
-
-                    // Check if user is disabled (Developers bypass this check in your logic)
-                   
-
-
-                // Mark phone as verified
-
-            } else{
-                 throw new BadRequestError('Invalid User');
-            }
-
-            await auth.updateLastLogin();
-            return await AuthController.generateTokenAndRespond(auth, res);
-        } catch (error) {
-            logger.error(error);
-            return next(error);
+        if (!authDoc.phone || !authDoc.otp) {
+            throw new BadRequestError('Phone and OTP are required');
         }
-    };
+
+        // ✅ normalize phone SAME as sign-in
+        const phone = authDoc.phone.split('-').join('');
+
+        const auth = await AuthService.findOne({ phone });
+
+        if (!auth) {
+            throw new BadRequestError('Invalid User');
+        }
+
+        if (auth.deleted_at || auth.is_disabled) {
+            throw new BadRequestError('The user may have been deleted or disabled by the admin');
+        }
+
+        if (auth.otp !== authDoc.otp) {
+            throw new BadRequestError('Invalid OTP');
+        }
+
+        // ✅ mark verified + clear otp
+        await AuthService.update(
+            {
+                is_phone_verified: true,
+                otp: undefined,
+                otp_created_at: undefined
+            },
+            auth.id
+        );
+
+        await auth.updateLastLogin();
+
+        return await AuthController.generateTokenAndRespond(auth, res);
+    } catch (error) {
+        logger.error(error);
+        return next(error);
+    }
+};
+
 
     static verifyFirebaseOtp = async (req: Request, res: Response, next: NextFunction) => {
         try {

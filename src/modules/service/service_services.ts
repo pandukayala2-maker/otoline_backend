@@ -149,6 +149,9 @@ static getVendorSlots = async (vendorId: string, date: string) => {
 
     const slotsWithAvailability = vendor.timeslots.map((slot: any) => {
         const bookedCount = orders.filter(order => {
+            // Only count orders with slotTiming (services have slots, products don't)
+            if (!order.slotTiming?.startTime) return false;
+            
             const orderStart = new Date(order.slotTiming.startTime).getTime();
             const slotStart = new Date(slot.startTime).getTime();
             return orderStart === slotStart;

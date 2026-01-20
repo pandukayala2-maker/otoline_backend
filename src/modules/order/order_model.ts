@@ -25,7 +25,12 @@ interface OrderDocument extends BaseDocument {
     total_price: number;
     points_used: number;
     points_earned: number;
-    slotTiming:any
+    slotTiming?: {
+        date?: Date;
+        startTime?: Date;
+        endTime?: Date;
+        slotNumber?: number;
+    };
     address: {
         id: Types.ObjectId;
         name: string;
@@ -75,21 +80,21 @@ const OrderSchema = new Schema<OrderDocument>({
     points_used: { type: Number },
     points_earned: { type: Number },
     slotTiming:{
-            startTime:{
+        startTime:{
             type: Date,
-            required: true,
+            required: false,
         },
-            endTime:{
+        endTime:{
             type: Date,
-            required: true,
+            required: false,
         },
         slotNumber:{
             type: Number,
-            required: true,
+            required: false,
         },
         date:{
             type: Date,
-            required: true,
+            required: false,
         },
     },
     address: {
